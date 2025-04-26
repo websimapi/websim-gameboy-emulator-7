@@ -103,23 +103,33 @@
     <script src="gameboy.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize the GameBoy emulator
             const canvas = document.getElementById('screen');
+            const statusElement = document.getElementById('status');
+            const gameNameElement = document.getElementById('game-name');
+            const errorElement = document.getElementById('error');
+            
+            // Initialize the GameBoy emulator with required options
             const gameboy = new GameboyJS.Gameboy(canvas, {
                 zoom: 2,
                 pad: {
                     class: GameboyJS.Keyboard
-                }
+                },
+                statusContainerId: 'status',
+                gameNameContainerId: 'game-name',
+                errorContainerId: 'error'
             });
             
             // Function to load a boot ROM
             function loadBootROM() {
-                loadboot(gameboy.cpu);
-                gameboy.cpu.usingBootRom = true;
-                gameboy.cpu.run();
+                if (gameboy && gameboy.cpu) {
+                    loadboot(gameboy.cpu);
+                    gameboy.cpu.usingBootRom = true;
+                    gameboy.cpu.run();
+                    statusElement.textContent = "Boot ROM loaded. Please load a game.";
+                }
             }
             
-            // Load the boot ROM immediately
+            // Load the boot ROM when page is loaded
             loadBootROM();
             
             // Handle pause button
@@ -140,6 +150,32 @@
                 soundEnabled = !soundEnabled;
                 gameboy.setSoundEnabled(soundEnabled);
                 soundBtn.textContent = soundEnabled ? 'Disable Sound' : 'Enable Sound';
+            });
+            
+            // Handle file input
+            const fileInput = document.getElementById('file');
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    if (file.name.endsWith('.gb') || file.name.endsWith('.gbc')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            try {
+                                const rom = new Uint8Array(e.target.result);
+                                gameboy.cpu.reset();
+                                gameboy.cpu.loadRom(rom);
+                                statusElement.textContent = 'Game Running:';
+                                gameNameElement.textContent = gameboy.cpu.getGameName();
+                                gameboy.cpu.run();
+                                errorElement.classList.add('hide');
+                            } catch (error) {
+                                errorElement.textContent = "Error loading ROM: " + error.message;
+                                errorElement.classList.remove('hide');
+                            }
+                        };
+                        reader.readAsArrayBuffer(file);
+                    }
+                }
             });
             
             // Enable drag and drop for ROM files
@@ -165,12 +201,18 @@
                     if (file.name.endsWith('.gb') || file.name.endsWith('.gbc')) {
                         const reader = new FileReader();
                         reader.onload = function(e) {
-                            const rom = new Uint8Array(e.target.result);
-                            gameboy.cpu.reset();
-                            gameboy.cpu.loadRom(rom);
-                            gameboy.setStatus('Game Running:');
-                            gameboy.setGameName(gameboy.cpu.getGameName());
-                            gameboy.cpu.run();
+                            try {
+                                const rom = new Uint8Array(e.target.result);
+                                gameboy.cpu.reset();
+                                gameboy.cpu.loadRom(rom);
+                                statusElement.textContent = 'Game Running:';
+                                gameNameElement.textContent = gameboy.cpu.getGameName();
+                                gameboy.cpu.run();
+                                errorElement.classList.add('hide');
+                            } catch (error) {
+                                errorElement.textContent = "Error loading ROM: " + error.message;
+                                errorElement.classList.remove('hide');
+                            }
                         };
                         reader.readAsArrayBuffer(file);
                     }
@@ -181,4 +223,3 @@
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
-
